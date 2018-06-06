@@ -1,0 +1,166 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+using System.Net;
+using System.IO;
+
+namespace Double_Action
+{
+    class Program
+    {
+        public static string DownloadString(string address, string Usernation)
+        {
+            using (WebClient client = new WebClient())
+            {
+                System.Threading.Thread.Sleep(750);
+                client.Headers.Add("user-agent", "Double Action test in use by" + Usernation + ", written by McChimp (contactable at MacleodJamie@Live.co.uk)");
+                string reply = client.DownloadString(address);
+                return reply;
+            }
+        }
+
+        static void Main(string[] args)
+        {
+            string Usernation = "NO USERNATION ENTERED", input, Influence;
+            int NumTargs;
+            bool Corrections = true;
+
+            /*General info*/
+            Console.WriteLine("Double Action V.1 authored by McChimp (helped by Atagait), 06 / 06 / 2018.  Multiple trigger raid manager.\n");
+            Console.WriteLine("You MUST NOT use more than one Double Action window or use it simultaneously with any other tools. Doing so breaks the NS terms of use. The program will get stuck if one of your triggers does not update when anticipated. As such, it is advised you be prepared to trigger manually.\n");
+
+            /*Retrieving usernation for useragent*/
+            Console.Write("For the benefit of the NS admins, please enter your main NS nation (eg. Custadia)> ");
+            Usernation = Console.ReadLine();
+            Console.Write("\n");
+
+            /*Finding out how many targets the user intends to hit*/
+            Console.Write("Please enter the number of targets (eg. 15)> ");
+            NumTargs = Convert.ToInt32(Console.ReadLine());
+            Console.Write("\n");
+            /*Setting up targ, trigger and controlinfluence arrays*/
+            List<string> Targs = new List<string>();
+            List<string> Trigs = new List<string>();
+            List<string> ControlInfluence = new List<string>();
+
+            /*Retrieving targets, corresponding triggers and control influences*/
+            for (int i = 0; i < NumTargs; i++)
+            {
+                Console.Write("Please enter the target region's name (eg. Deziat)> ");
+                if (Console.KeyAvailable)
+                    Console.ReadKey(false);
+                Targs.Add("https://www.nationstates.net/region=" + Console.ReadLine().Replace(" ", "_"));
+                Console.Write("Please enter the trigger nation's name (eg. Custadia)> ");
+                TrigsReentry:
+                if (Console.KeyAvailable)
+                    Console.ReadKey(false);
+                Trigs.Add("https://www.nationstates.net/cgi-bin/api.cgi?nation=" + Console.ReadLine().Replace(" ", "_") + "&q=census;scale=65;mode=score");
+                try
+                {
+                    Console.Write("Verifying trigger nation...\n");
+                    ControlInfluence.Add(DownloadString(Trigs[i], Usernation));
+                }
+                catch
+                {
+                    Console.Write("Invalid trigger nation. Try Again> ");
+                    Trigs.RemoveAt(i);
+                    goto TrigsReentry;
+                }
+                Console.Write("\n");
+            }
+
+            do
+            {
+
+                /*Outputting target URLs and triggers*/
+                for (int i = 0; i <NumTargs; i++)
+                {
+                    Console.Write("\n" + (i + 1) + ":\n");
+                    Console.Write(Targs[i] + "\n");
+                    Console.Write(Trigs[i] + "\n");
+                }
+
+                /*Retrieving user confirmation that all is correct*/
+                Console.Write("\nAre all of these correct (Y/N)?> ");
+
+                /*Asking the user to correct entries until they confirm that all are correct*/
+                ConfirmationReentry:
+                input = Console.ReadLine();
+
+                /*If not all are correct, the user is asked to reenter the target and trigger and, unless errors occur, is then prompted again for confirmation*/
+                if (input == "N")
+                {
+                    Console.Write("\nChoose one to correct (eg. 1)> ");
+                    NumberReentry:
+                    input = Console.ReadLine();
+                    /*Try statement in case inputted entry to correct is not in correct format*/
+                    try
+                    {
+                        Console.Write("Please enter the target region's name (eg. Deziat)> ");
+                        if (Console.KeyAvailable)
+                            Console.ReadKey(false);
+                        Targs[Convert.ToInt32(input)-1] = ("https://www.nationstates.net/region=" + Console.ReadLine().Replace(" ", "_"));
+                        Console.Write("Please enter the trigger nation's name (eg. Custadia)> ");
+                        TrigsReentry2:
+                        if (Console.KeyAvailable)
+                            Console.ReadKey(false);
+                        Trigs[Convert.ToInt32(input)-1] = ("https://www.nationstates.net/cgi-bin/api.cgi?nation=" + Console.ReadLine().Replace(" ", "_") + "&q=census;scale=65;mode=score");
+                        /*Try statement checking whether trigger nation exists*/
+                        try
+                        {
+                            Console.Write("Verifying trigger nation...\n");
+                            ControlInfluence[Convert.ToInt32(input) - 1] = DownloadString(Trigs[Convert.ToInt32(input)-1], Usernation);
+                        }
+                        catch
+                        {
+                            Console.Write("Invalid trigger nation. Try Again (eg. Custadia)> ");
+                            goto TrigsReentry2;
+                        }
+                    }
+                    catch
+                    {
+                        Console.Write("Invalid entry number. Try again (eg. 1)> ");
+                        goto NumberReentry;
+                    }
+                }
+                else if (input == "Y")
+                {
+                    Corrections = false;
+                }
+                else
+                {
+                    Console.Write("Your entry is invalid. Enter 'Y' or 'N'> ");
+                    goto ConfirmationReentry;
+                }
+            } while (Corrections == true);
+
+            /*Asking the user for confirmation before starting to make regular API requests*/
+            Console.Write("\nPress enter to start the raid and BEGIN MAKING REGULAR API REQUESTS\n");
+            Console.ReadKey();
+
+            /*Runs through each target, eventually giving go order.*/
+            for (int i = 0; i < NumTargs; i++)
+            {
+                Influence = DownloadString(Trigs[i], Usernation);
+                if (Influence == ControlInfluence[i])
+                {
+                    Console.Write("\n" + Targs[i] + ":\n");
+
+                    do
+                    {
+                        Influence = DownloadString(Trigs[i], Usernation);
+                        Console.Write(".");
+                    } while (String.Compare(Influence, ControlInfluence[i]) == 0);
+
+                    Console.ForegroundColor = ConsoleColor.Red;
+                    Console.Write("\n\nGO GO GO\n");
+                    Console.ForegroundColor = ConsoleColor.White;
+                }
+            }
+            Console.Write("\nRaid finished. Press enter to close.");
+            Console.ReadKey();
+        }
+    }
+}
